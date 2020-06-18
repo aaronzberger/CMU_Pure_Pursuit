@@ -1,0 +1,6 @@
+.vscode/**
+src/utils_pp.pyc
+src/utils_viz.pyc
+src/waypts.npy
+src/__pycache__/**
+src/pure_pursuit.rviz
