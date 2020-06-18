@@ -13,4 +13,7 @@ This program requries certain Husky simulators to run. To install these simulato
    
 Upon running the program, a graph will appear. You must input your desired waypoints in a specified time for the program to run successfully. These parameters can be adjusted in src/pure_pursuit.py
 
+The pure pursuit algorithm was created by the Carnegie Mellon University Robotics Insitute. The original paper explaining the theory and basic mathematics can be found at
+  https://www.ri.cmu.edu/pub_files/pub3/coulter_r_craig_1992_1/coulter_r_craig_1992_1.pdf
+
 If you run into any problems when compiling or executing, please contact me: aaronzberger@gmail.com
