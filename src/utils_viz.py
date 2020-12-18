@@ -1,6 +1,8 @@
 import rospy
 
 from visualization_msgs.msg import MarkerArray, Marker
+from tf.transformations import euler_from_quaternion
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Point
 
 
@@ -19,11 +21,20 @@ class MarkerVisualization():
 		self.pub_marker_pts_curv = rospy.Publisher(
 			'/visualization_pts_curv', MarkerArray, queue_size=1)
 
-		# rospy.init_node('waypoint_visualizer_py', anonymous=True)
-		# self.rate = rospy.Rate(100) # 10hz
+		self.sub_odom = rospy.Subscriber(
+			'/odometry/filtered', Odometry, self.callback_odom)
+
+	def callback_odom(self, data):
+		self.pose_now = data.pose.pose
+
+		# Fetch the quaternion from the Odometry topic
+		quat = self.pose_now.orientation
+		quat_list = [quat.x, quat.y, quat.z, quat.w]
+
+		# Convert quaternion to Euler (we will only use yaw)
+		(_, _, self.yaw_now) = euler_from_quaternion(quat_list)
 
 	def publish_marker_waypts(self, waypoints):
-
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
@@ -44,8 +55,8 @@ class MarkerVisualization():
 			marker.color.b = 0.0
 			marker.color.a = 1.0
 
-			marker.pose.position.x = waypoint[0]
-			marker.pose.position.y = waypoint[1]
+			marker.pose.position.x = waypoint.x + self.pose_now.position.x
+			marker.pose.position.y = waypoint.y + self.pose_now.position.y
 			marker.pose.position.z = 0
 
 			marker.pose.orientation.x = 0.0
@@ -58,10 +69,8 @@ class MarkerVisualization():
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_waypts.publish(markers_array_msg)
-		# self.rate.sleep()
 
 	def publish_lines_waypts(self, waypoints):
-
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
@@ -84,18 +93,19 @@ class MarkerVisualization():
 		marker.pose.orientation.z = 0.0
 		marker.pose.orientation.w = 1.0
 
-		for i, waypoint in enumerate(waypoints):
-			marker.points.append(Point(waypoint[0], waypoint[1], 0))
+		for waypoint in waypoints:
+			pt = Point()
+			pt.x = waypoint.x + self.pose_now.position.x
+			pt.y = waypoint.y + self.pose_now.position.y
+			marker.points.append(pt)
 
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_lines_waypts.publish(markers_array_msg)
-		# self.rate.sleep()
 
-	def publish_marker_robot_pose(self, robot_pose):
-
+	def publish_marker_robot_pose(self):
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
@@ -115,17 +125,15 @@ class MarkerVisualization():
 		marker.color.b = 0.0
 		marker.color.a = 1
 
-		marker.pose = robot_pose
+		marker.pose = self.pose_now
 
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_robot_pose.publish(markers_array_msg)
-		# self.rate.sleep()
 
-	def publish_marker_lookahead_circle(self, robot_pose, lookahead):
-
+	def publish_marker_lookahead_circle(self, lookahead):
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
@@ -145,17 +153,15 @@ class MarkerVisualization():
 		marker.color.b = 0.0
 		marker.color.a = 0.4
 
-		marker.pose = robot_pose
+		marker.pose = self.pose_now
 
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_lookahead_circle.publish(markers_array_msg)
-		# self.rate.sleep()
 
-	def publish_marker_goal(self, pg):
-
+	def publish_marker_goal(self, point_goal):
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
@@ -175,8 +181,8 @@ class MarkerVisualization():
 		marker.color.b = 0.0
 		marker.color.a = 1.0
 
-		marker.pose.position.x = pg[0]
-		marker.pose.position.y = pg[1]
+		marker.pose.position.x = point_goal[0] + self.pose_now.position.x
+		marker.pose.position.y = point_goal[1] + self.pose_now.position.y
 		marker.pose.position.z = 0
 
 		marker.pose.orientation.x = 0.0
@@ -189,41 +195,3 @@ class MarkerVisualization():
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_goal.publish(markers_array_msg)
-
-	def publish_marker_pts_curv(self, waypoints, waypts_curvature):
-
-		markers_array_msg = MarkerArray()
-		markers_array = []
-
-		for i in range(0, waypoints.shape[0]):
-			waypoint = waypoints[i]
-			marker = Marker()
-			marker.ns = "waypoints_curvature"
-			marker.id = i
-			marker.header.frame_id = "odom"
-			marker.type = marker.CYLINDER
-			marker.action = marker.ADD
-
-			marker.scale.x = 0.5 + waypts_curvature[i]
-			marker.scale.y = 0.5 + waypts_curvature[i]
-			marker.scale.z = 0.05 * 0.75
-
-			marker.color.r = 1.0
-			marker.color.g = 0.549
-			marker.color.b = 0.0
-			marker.color.a = 1.0
-
-			marker.pose.position.x = waypoint[0]
-			marker.pose.position.y = waypoint[1]
-			marker.pose.position.z = 0
-
-			marker.pose.orientation.x = 0.0
-			marker.pose.orientation.y = 0.0
-			marker.pose.orientation.z = 0.0
-			marker.pose.orientation.w = 1.0
-
-			marker.lifetime = rospy.Duration(0)
-			markers_array.append(marker)
-
-		markers_array_msg.markers = markers_array
-		self.pub_marker_pts_curv.publish(markers_array_msg)

@@ -3,35 +3,27 @@
 from __future__ import print_function
 
 import rospy
-import sys
 
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-# from gazebo_msgs.msg import LinkStates
 from rosgraph_msgs.msg import Clock
-from tf.transformations import euler_from_quaternion
-import numpy as np
+from CMU_Path_Planning_Node.msg import path
 import tf
 
 import utils_pp
 import utils_viz
 
-print("Python Version: %s" % sys.version)
+##################################
+# USER PARAMETERS
+##################################
+lookahead_distance = 2.0
+target_vel = 0.4
 
-###################################################
-# SET USER PARAMETERS
-###################################################
-num_input_pts = 8
+visualize = True
 
-# Coordinate limits of input waypoints
-x_world = 10
-y_world = 10
-
-# Size of the plot (adjust for your screen size)
-x_fig = 10
-y_fig = 10
-###################################################
+# In milliseconds
+min_update_time = 10
+##################################
 
 
 class PurePursuitNode:
@@ -40,60 +32,32 @@ class PurePursuitNode:
 		self.clock_last_motion_update = 0
 		self.clock_last_rviz_update = 0
 
-		self.waypts = np.load("waypts.npy")
+		if visualize:
+			self.markerVisualization_obj = utils_viz.MarkerVisualization()
+		self.pure_pursuit_obj = utils_pp.PurePursuit(lookahead_distance, target_vel)
 
-		self.markerVisualization_obj = utils_viz.MarkerVisualization()
-		self.pure_pursuit_obj = utils_pp.PurePursuit(self.waypts)
-
+		self.sub_trajectory = rospy.Subscriber(
+			'/path_planned', path, self.callback_path)
 		self.sub_clock = rospy.Subscriber(
 			'/clock', Clock, self.callback_clock)
-		self.sub_odom = rospy.Subscriber(
-			'/odometry/filtered', Odometry, self.callback_odom)
-		# self.sub_gazebo_link = rospy.Subscriber(
-		# 	'/gazebo/link_states', LinkStates, self.callback_gazebo_link_states)
 
 		self.pub_cmd_vel = rospy.Publisher(
 			'cmd_vel', Twist, queue_size=1)
 		self.pub_curvature = rospy.Publisher(
 			'curvature', Float32, queue_size=1)
-		# self.pub_gazebo_to_odom = rospy.Publisher(
-		# 	'/odometry/filtered', Odometry, queue_size=1)
 
 		self.br = tf.TransformBroadcaster()
 
 	def callback_clock(self, data):
 		self.clock_now = data.clock.secs * 1000 + int(data.clock.nsecs / 1e6)
 
-	def callback_odom(self, data):
-		# Fetch the quaternion from the Odometry topic
-		r_quat_ros = data.pose.pose.orientation
-		r_quaternion_list = [r_quat_ros.x, r_quat_ros.y, r_quat_ros.z, r_quat_ros.w]
-
-		# Convert quaternion to Euler (we will only use yaw)
-		(roll, pitch, yaw) = euler_from_quaternion(r_quaternion_list)
-
-		# Every 10 ms, publish visualization tools to rviz
-		if (self.clock_now - self.clock_last_rviz_update > 10):
-			self.markerVisualization_obj.publish_marker_waypts(self.waypts)
-			self.markerVisualization_obj.publish_lines_waypts(self.waypts)
-			self.markerVisualization_obj.publish_marker_robot_pose(data.pose.pose)
-			self.markerVisualization_obj.publish_marker_lookahead_circle(
-				data.pose.pose, self.pure_pursuit_obj.lookahead)
-			self.markerVisualization_obj.publish_marker_goal(
-				self.pure_pursuit_obj.point_goal)
-			self.markerVisualization_obj.publish_marker_pts_curv(
-				self.waypts, self.pure_pursuit_obj.waypts_curvature)
-
-			self.clock_last_rviz_update = self.clock_now
-
+	def callback_path(self, data):
 		# Every 10 ms, calculate trajectory and move the robot
-		if (self.clock_now - self.clock_last_motion_update > 10):
-			robot_pose = data.pose.pose.position
-			self.pure_pursuit_obj.update_pos(robot_pose.x, robot_pose.y, yaw)
+		if (self.clock_now - self.clock_last_motion_update > min_update_time):
+			self.pure_pursuit_obj.update_waypts(data.pts)
 			self.pure_pursuit_obj.find_lookahead_pt()
 			self.pure_pursuit_obj.find_curvature()
 			x_vel, ang_vel = self.pure_pursuit_obj.motion_update()
-			self.pure_pursuit_obj.check_reset()
 
 			# Create a velocity message that will move the robot
 			twist = Twist()
@@ -110,11 +74,21 @@ class PurePursuitNode:
 
 			self.clock_last_motion_update = self.clock_now
 
+		# Every 10 ms, publish visualization tools to rviz
+		if visualize:
+			if (self.clock_now - self.clock_last_rviz_update > min_update_time):
+				self.markerVisualization_obj.publish_marker_waypts(data.pts)
+				self.markerVisualization_obj.publish_lines_waypts(data.pts)
+				self.markerVisualization_obj.publish_marker_robot_pose()
+				self.markerVisualization_obj.publish_marker_lookahead_circle(
+					self.pure_pursuit_obj.lookahead)
+				self.markerVisualization_obj.publish_marker_goal(
+					self.pure_pursuit_obj.point_goal)
+
+				self.clock_last_rviz_update = self.clock_now
+
 
 if __name__ == "__main__":
-	# Collect waypoints from user input graph
-	utils_pp.collectPts(num_input_pts, x_world, y_world, x_fig, y_fig)
-
 	try:
 		rospy.init_node('pure_pursuit_node')
 		pure_pursuit_node_obj = PurePursuitNode()
