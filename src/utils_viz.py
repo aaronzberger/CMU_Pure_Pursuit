@@ -1,30 +1,33 @@
 import rospy
-import time
-import numpy as np
+
 from visualization_msgs.msg import MarkerArray, Marker
-import geometry_msgs.msg
 from geometry_msgs.msg import Point
 
-class MarkerVisualization():
 
+class MarkerVisualization():
 	def __init__(self):
-		self.pub_marker_waypts = rospy.Publisher('/visualization_waypoint', MarkerArray, queue_size=1)
-		self.pub_lines_waypts = rospy.Publisher('/visualization_waypoint_lines', MarkerArray, queue_size=1)
-		self.pub_marker_robot_pose = rospy.Publisher('/visualization_robot_pose', MarkerArray, queue_size=1)
-		self.pub_marker_lookahead_circle = rospy.Publisher('/visualization_lookahead', MarkerArray, queue_size=1)
-		self.pub_marker_goal = rospy.Publisher('/visualization_goal', MarkerArray, queue_size=1)
-		self.pub_marker_pts_curv = rospy.Publisher('/visualization_pts_curv', MarkerArray, queue_size=1)
+		self.pub_marker_waypts = rospy.Publisher(
+			'/visualization_waypoint', MarkerArray, queue_size=1)
+		self.pub_lines_waypts = rospy.Publisher(
+			'/visualization_waypoint_lines', MarkerArray, queue_size=1)
+		self.pub_marker_robot_pose = rospy.Publisher(
+			'/visualization_robot_pose', MarkerArray, queue_size=1)
+		self.pub_marker_lookahead_circle = rospy.Publisher(
+			'/visualization_lookahead', MarkerArray, queue_size=1)
+		self.pub_marker_goal = rospy.Publisher(
+			'/visualization_goal', MarkerArray, queue_size=1)
+		self.pub_marker_pts_curv = rospy.Publisher(
+			'/visualization_pts_curv', MarkerArray, queue_size=1)
 
 		# rospy.init_node('waypoint_visualizer_py', anonymous=True)
 		# self.rate = rospy.Rate(100) # 10hz
-
 
 	def publish_marker_waypts(self, waypoints):
 
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
-		for i,waypoint in enumerate(waypoints):
+		for i, waypoint in enumerate(waypoints):
 			marker = Marker()
 			marker.ns = "waypoints"
 			marker.id = i
@@ -57,7 +60,6 @@ class MarkerVisualization():
 		self.pub_marker_waypts.publish(markers_array_msg)
 		# self.rate.sleep()
 
-
 	def publish_lines_waypts(self, waypoints):
 
 		markers_array_msg = MarkerArray()
@@ -82,16 +84,15 @@ class MarkerVisualization():
 		marker.pose.orientation.z = 0.0
 		marker.pose.orientation.w = 1.0
 
-		for i,waypoint in enumerate(waypoints):
+		for i, waypoint in enumerate(waypoints):
 			marker.points.append(Point(waypoint[0], waypoint[1], 0))
-		
+
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_lines_waypts.publish(markers_array_msg)
 		# self.rate.sleep()
-
 
 	def publish_marker_robot_pose(self, robot_pose):
 
@@ -115,14 +116,13 @@ class MarkerVisualization():
 		marker.color.a = 1
 
 		marker.pose = robot_pose
-		
+
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_robot_pose.publish(markers_array_msg)
 		# self.rate.sleep()
-
 
 	def publish_marker_lookahead_circle(self, robot_pose, lookahead):
 
@@ -136,8 +136,8 @@ class MarkerVisualization():
 		marker.type = marker.CYLINDER
 		marker.action = marker.ADD
 
-		marker.scale.x = lookahead*2
-		marker.scale.y = lookahead*2
+		marker.scale.x = lookahead * 2
+		marker.scale.y = lookahead * 2
 		marker.scale.z = 0.05
 
 		marker.color.r = 1.0
@@ -146,14 +146,13 @@ class MarkerVisualization():
 		marker.color.a = 0.4
 
 		marker.pose = robot_pose
-		
+
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_lookahead_circle.publish(markers_array_msg)
 		# self.rate.sleep()
-
 
 	def publish_marker_goal(self, pg):
 
@@ -175,7 +174,7 @@ class MarkerVisualization():
 		marker.color.g = 0.0
 		marker.color.b = 0.0
 		marker.color.a = 1.0
-		
+
 		marker.pose.position.x = pg[0]
 		marker.pose.position.y = pg[1]
 		marker.pose.position.z = 0
@@ -185,20 +184,18 @@ class MarkerVisualization():
 		marker.pose.orientation.z = 0.0
 		marker.pose.orientation.w = 1.0
 
-		
 		marker.lifetime = rospy.Duration(0)
 		markers_array.append(marker)
 
 		markers_array_msg.markers = markers_array
 		self.pub_marker_goal.publish(markers_array_msg)
 
-
 	def publish_marker_pts_curv(self, waypoints, waypts_curvature):
 
 		markers_array_msg = MarkerArray()
 		markers_array = []
 
-		for i in range(0,waypoints.shape[0]):
+		for i in range(0, waypoints.shape[0]):
 			waypoint = waypoints[i]
 			marker = Marker()
 			marker.ns = "waypoints_curvature"
@@ -207,9 +204,9 @@ class MarkerVisualization():
 			marker.type = marker.CYLINDER
 			marker.action = marker.ADD
 
-			marker.scale.x = 0.5+waypts_curvature[i]
-			marker.scale.y = 0.5+waypts_curvature[i]
-			marker.scale.z = 0.05*0.75
+			marker.scale.x = 0.5 + waypts_curvature[i]
+			marker.scale.y = 0.5 + waypts_curvature[i]
+			marker.scale.z = 0.05 * 0.75
 
 			marker.color.r = 1.0
 			marker.color.g = 0.549
