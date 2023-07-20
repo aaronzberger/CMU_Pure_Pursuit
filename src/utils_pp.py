@@ -70,6 +70,35 @@ class PurePursuit():
 		self.waypts_curvature = [0]
 		self.find_pt_to_pt_curvature()
 
+	def update_waypts(self, waypts):
+		'''
+		Updates all the waypoints and all the variables
+		'''
+		self.waypts = waypts
+		self.num_waypts = waypts.shape[0]
+		self.waypt_number = 0
+		self.current_waypt_location = 0
+		self.pt_pos = waypts[0]
+		self.x_pos = self.pt_pos[0]
+		self.y_pos = self.pt_pos[1]
+		self.theta = self.angle_bw_2lines(
+			np.array([self.waypts[0][0] + 1, self.waypts[0][1]]),
+			self.waypts[0], self.waypts[1])
+		self.point_goal = self.waypts[0]
+		self.arc_c = self.waypts[0]
+		self.curvature = 0
+		self.vel = 0.75
+		self.vel_left = 0
+		self.vel_right = 0
+		self.target_vel = self.vel
+		self.ang_vel = 0
+		self.ang_vel_thresh = 2
+		self.x_navPath = []
+		self.y_navPath = []
+		self.reset_flag = True
+		self.waypts_curvature = [0]
+		self.find_pt_to_pt_curvature()
+
 	def find_pt_to_pt_curvature(self):
 		'''
 		Determine the curvature through every waypoint
@@ -103,27 +132,10 @@ class PurePursuit():
 		self.waypts_curvature.append(0)
 		print(self.waypts_curvature)
 
-	def reset_pos(self):
-		self.x_pos = self.pt_pos[0]
-		self.y_pos = self.pt_pos[1]
-		self.theta = self.angle_bw_2lines(np.array(
-			[self.waypts[0][0] + 1, self.waypts[0][1]]), self.waypts[0], self.waypts[1])
-		self.point_goal = self.waypts[0]
-		self.waypt_number = 0
-		self.current_waypt_location = 0
-
-	def get_pos(self):
-		return (self.x_pos, self.y_pos, self.theta)
-
 	def update_pos(self, x, y, theta):
 		self.x_pos = x
 		self.y_pos = y
 		self.theta = theta
-
-	def get_head_pos(self):
-		self.x_head_pos = self.x_pos + self.lookahead * np.cos(self.theta)
-		self.y_head_pos = self.y_pos + self.lookahead * np.sin(self.theta)
-		return(self.x_head_pos, self.y_head_pos)
 
 	def angle_bw_2lines(self, a, b, c):
 		ba = a - b
@@ -136,7 +148,8 @@ class PurePursuit():
 		return np.linalg.norm(self.xy_pos() - pt)
 
 	def xy_pos(self):
-		return np.array([self.x_pos, self.y_pos])
+		return np.array([0, 0])
+		# return np.array([self.x_pos, self.y_pos])
 
 	def find_closest_point(self):
 		'''

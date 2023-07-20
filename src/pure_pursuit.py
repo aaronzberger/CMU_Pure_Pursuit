@@ -1,4 +1,4 @@
-#!/home/aaron/py27/bin/python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 
@@ -8,12 +8,12 @@ import sys
 from std_msgs.msg import Float32
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-# from gazebo_msgs.msg import LinkStates
 from rosgraph_msgs.msg import Clock
 from tf.transformations import euler_from_quaternion
 import numpy as np
 import tf
 
+from CMU_Path_Planning_Node.msg import path
 import utils_pp
 import utils_viz
 
@@ -40,7 +40,17 @@ class PurePursuitNode:
 		self.clock_last_motion_update = 0
 		self.clock_last_rviz_update = 0
 
-		self.waypts = np.load("waypts.npy")
+		# self.waypts = np.load("waypts.npy")
+
+		# print("WAYPOINTS ARE LOADED", self.waypts)
+
+		# Wait for an initial waypts message
+		try:
+			waypts = rospy.wait_for_message('/path_planned', path, timeout=5.0)
+			self.waypts = np.array([[pt.x, pt.y] for pt in waypts.pts])
+		except rospy.ROSException:
+			print("No waypoints received. Shutting down.")
+			rospy.signal_shutdown("No waypoints received")
 
 		self.markerVisualization_obj = utils_viz.MarkerVisualization()
 		self.pure_pursuit_obj = utils_pp.PurePursuit(self.waypts)
@@ -56,6 +66,9 @@ class PurePursuitNode:
 			'cmd_vel', Twist, queue_size=1)
 		self.pub_curvature = rospy.Publisher(
 			'curvature', Float32, queue_size=1)
+		
+		self.sub_waypts = rospy.Subscriber(
+			'/path_planned', path, self.callback_waypts)
 		# self.pub_gazebo_to_odom = rospy.Publisher(
 		# 	'/odometry/filtered', Odometry, queue_size=1)
 
@@ -63,6 +76,11 @@ class PurePursuitNode:
 
 	def callback_clock(self, data):
 		self.clock_now = data.clock.secs * 1000 + int(data.clock.nsecs / 1e6)
+
+	def callback_waypts(self, data):
+		self.waypts = np.array([[pt.x, pt.y] for pt in data.pts])
+
+		self.pure_pursuit_obj.update_waypts(self.waypts)
 
 	def callback_odom(self, data):
 		# Fetch the quaternion from the Odometry topic
@@ -89,11 +107,12 @@ class PurePursuitNode:
 		# Every 10 ms, calculate trajectory and move the robot
 		if (self.clock_now - self.clock_last_motion_update > 10):
 			robot_pose = data.pose.pose.position
-			self.pure_pursuit_obj.update_pos(robot_pose.x, robot_pose.y, yaw)
+			# self.pure_pursuit_obj.update_pos(robot_pose.x, robot_pose.y, yaw)
+			self.pure_pursuit_obj.update_pos(0, 0, 0)
 			self.pure_pursuit_obj.find_lookahead_pt()
 			self.pure_pursuit_obj.find_curvature()
 			x_vel, ang_vel = self.pure_pursuit_obj.motion_update()
-			self.pure_pursuit_obj.check_reset()
+			# self.pure_pursuit_obj.check_reset()
 
 			# Create a velocity message that will move the robot
 			twist = Twist()
@@ -113,7 +132,7 @@ class PurePursuitNode:
 
 if __name__ == "__main__":
 	# Collect waypoints from user input graph
-	utils_pp.collectPts(num_input_pts, x_world, y_world, x_fig, y_fig)
+	# utils_pp.collectPts(num_input_pts, x_world, y_world, x_fig, y_fig)
 
 	try:
 		rospy.init_node('pure_pursuit_node')

@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point
 class MarkerVisualization():
 	def __init__(self):
 		self.pub_marker_waypts = rospy.Publisher(
-			'/visualization_waypoint', MarkerArray, queue_size=1)
+			'/pure_pursuit_waypts', MarkerArray, queue_size=1)
 		self.pub_lines_waypts = rospy.Publisher(
 			'/visualization_waypoint_lines', MarkerArray, queue_size=1)
 		self.pub_marker_robot_pose = rospy.Publisher(
@@ -31,7 +31,7 @@ class MarkerVisualization():
 			marker = Marker()
 			marker.ns = "waypoints"
 			marker.id = i
-			marker.header.frame_id = "odom"
+			marker.header.frame_id = "base_link"
 			marker.type = marker.CYLINDER
 			marker.action = marker.ADD
 
@@ -41,7 +41,7 @@ class MarkerVisualization():
 
 			marker.color.r = 0.0
 			marker.color.g = 1.0
-			marker.color.b = 0.0
+			marker.color.b = 1.0
 			marker.color.a = 1.0
 
 			marker.pose.position.x = waypoint[0]
